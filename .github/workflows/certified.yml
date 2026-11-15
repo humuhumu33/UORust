@@ -112,7 +112,7 @@ jobs:
           scripts/ci/sdk.sh "just certified-project && just certified-export $SHARD $((EXPORT_MINUTES * 60))"
           echo "ARTIFACT=shard-$SHARD" >>"$GITHUB_ENV"
       - name: Keep the shard for the land job
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: ${{ env.ARTIFACT }}
           path: target/uorust-certified
@@ -147,7 +147,7 @@ jobs:
         run: scripts/ci/sdk.sh "just certified-project && just certified-diagnose $ROOT"
       - name: Keep its whole diagnostic and generated certificates
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: diagnose-${{ matrix.root }}
           path: |
@@ -184,7 +184,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Fetch every shard
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           pattern: shard-*
           path: target/uorust-certified
@@ -192,7 +192,7 @@ jobs:
         shell: bash
         run: scripts/ci/sdk.sh 'just certified-sync'
       - name: Keep the manifest for the next export
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: certified-manifest
           path: crates/certified/manifest.toml
@@ -249,7 +249,7 @@ jobs:
         shell: bash
         run: scripts/ci/sdk.sh 'just certified-gate target/certified-gate'
       - name: Keep the outputs' κ
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: certified-kappa-${{ matrix.runner }}-${{ matrix.run }}
           path: target/certified-gate/kappa.txt
@@ -261,7 +261,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           pattern: certified-kappa-*
           path: kappa
