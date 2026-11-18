@@ -55,8 +55,8 @@ jobs:
           targets = json.load(open("app/production-targets.json"))
           digest = next(t["digest"] for t in targets["targets"] if t["id"] == "rust-std")
           roots = {
-              "foreign-model": "Uorust.Foreign.foreignModel",
-              "place-write": "Uorust.Threading.placeWrite",
+              "foreign_model": "Uorust.Foreign.foreignModel",
+              "place_write": "Uorust.Threading.placeWrite",
           }
           request = {
               "roots": [
