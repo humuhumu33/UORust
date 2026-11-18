@@ -2265,3 +2265,35 @@ fn an_integer_read_as_a_fieldless_enum_is_its_variant_ue_27() {
     let detail = residue_detail(&files, "codes::wide").expect("wide is a residue row");
     assert!(detail.contains("unsafe"), "{detail}");
 }
+
+#[test]
+fn account_metas_and_branch_hints_lift_by_their_models_ue_28() {
+    let planted = scratch(
+        "ue28-builders",
+        &[
+            (
+                "Cargo.toml",
+                "[package]\nname = \"builder\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n\
+                 [dependencies]\nsolana-instruction = \"2\"\nsolana-pubkey = \"2\"\npinocchio = \"0.9\"\n",
+            ),
+            (
+                "src/lib.rs",
+                "//! Builders.\nuse pinocchio::hint::{likely, unlikely};\nuse solana_instruction::AccountMeta;\nuse solana_pubkey::Pubkey;\n\n\
+                 /// The metas of a writable source and a read-only signer.\n\
+                 pub fn metas(source: Pubkey, owner: Pubkey) -> Vec<AccountMeta> {\n    \
+                 let mut accounts = Vec::with_capacity(2);\n    \
+                 accounts.push(AccountMeta::new(source, false));\n    \
+                 accounts.push(AccountMeta::new_readonly(owner, true));\n    accounts\n}\n\n\
+                 /// A hinted test.\npub fn hinted(a: bool, b: bool) -> bool {\n    likely(a) && !unlikely(b)\n}\n",
+            ),
+        ],
+    );
+    let files = project(&planted, "builder");
+    let lifted = lifted_functions(&files);
+    for f in ["builder::metas", "builder::hinted"] {
+        assert!(lifted.iter().any(|l| l == f), "{f} lifts: {lifted:?}");
+    }
+    let behavior = text(&files, "src/Behavior.lex.tex");
+    assert!(behavior.contains("isWritable := true"), "{behavior}");
+    assert!(behavior.contains("isWritable := false"), "{behavior}");
+}

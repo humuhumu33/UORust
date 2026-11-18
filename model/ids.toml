@@ -219,3 +219,9 @@ id = "UE-27"
 level = "build"
 suite = "engine"
 statement = "An integer read as a fieldless enum is its variant: in `match x { p => .. unsafe { transmute::<uN, E>(x) } .. }`, an arm whose pattern is literals, ranges and `|` of `x` lifts as one arm per value it admits, each with the variant whose discriminant is that value, the discriminants those the source writes or the variants' indices; where a value names no variant the arm is not read so and the function stays a residue row naming the `unsafe`"
+
+[[id]]
+id = "UE-28"
+level = "build"
+suite = "engine"
+statement = "The Solana instruction and pinocchio models declare what the token programs build and test with, as their crates define it: `AccountMeta::new(pubkey, is_signer)` is the meta with `is_writable` true and `AccountMeta::new_readonly` the one with it false, and `pinocchio::hint::likely(b)` and `unlikely(b)` are `b`, so a function that builds account metas into a vector or tests a hinted condition lifts through them; the models change only in `Foreign::foreignModels`, whose export the `model-export` workflow regenerates in the SDK image `prismpm.lock` pins and which the committed `crates/uorust/spec/foreign_model.rs` equals byte for byte"

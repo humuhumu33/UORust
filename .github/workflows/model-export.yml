@@ -1,0 +1,92 @@
+# Regenerates the `lexlean production` exports of the app model that the
+# translator calls (crates/uorust/spec/*.rs), in the SDK image prismpm.lock
+# pins, so no machine of the author's runs the image. Each export is the
+# `src/lib.rs` of the package `lexlean production build` renders for one
+# production root of app/. The run uploads the packages, the targets and the
+# request as the artifact `model-export-<sha>`; it writes nothing back.
+name: model-export
+
+on:
+  push:
+    branches: ['export/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: model-export-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  export:
+    name: export the model's production roots
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Check out the exact event revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Build each production root through the locked SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          image=$(sed -n 's/.*"sdk_image":"\([^"]*\)".*/\1/p' prismpm.lock)
+          if [[ ! $image =~ ^[a-z0-9.-]+(:[0-9]{1,5})?/[a-z0-9./_-]+@sha256:[0-9a-f]{64}$ ]]; then
+            printf '%s\n' 'prismpm.lock does not select an immutable SDK image' >&2
+            exit 64
+          fi
+          sdk() {
+            docker run --rm \
+              --user "$(id -u):$(id -g)" \
+              --tmpfs /tmp:rw,exec,nosuid,size=4g \
+              --volume "$PWD:$PWD" \
+              --workdir "$PWD/app" \
+              --env HOME=/tmp/prismpm-home \
+              --env PRISMPM_EPHEMERAL_HOME=1 \
+              "$image" sh -c "$1"
+          }
+          sdk 'lexlean --version && lexlean lock && lexlean production targets --diagnostic-format json > production-targets.json'
+          # One package per root: the export file it becomes, and the root.
+          python3 - <<'PY'
+          import json
+          targets = json.load(open("app/production-targets.json"))
+          digest = next(t["digest"] for t in targets["targets"] if t["id"] == "rust-std")
+          roots = {
+              "foreign_model": "Uorust.Foreign.foreignModel",
+              "place_write": "Uorust.Threading.placeWrite",
+          }
+          request = {
+              "roots": [
+                  {
+                      "package": {"name": name, "version": "0.1.0"},
+                      "root": root,
+                      "targets": [{"digest": digest, "id": "rust-std"}],
+                  }
+                  for name, root in sorted(roots.items(), key=lambda kv: kv[1])
+              ],
+              "spec": "lexlean/production-request/1",
+          }
+          json.dump(request, open("app/production-request.json", "w"), indent=2)
+          PY
+          sdk 'lexlean production build --request production-request.json --diagnostic-format human --color never' 2>&1 | tee app/production-build.log
+          # The theorems of the model, each checked by Lean in this run.
+          sdk 'lexlean verify --all' 2>&1 | tee app/verify.log
+          mkdir -p export
+          cp app/production-targets.json app/production-request.json app/production-build.log app/verify.log export/
+          find app/.lexlean/production -path '*/src/lib.rs' | while read -r lib; do
+            dest="export/packages/${lib#app/.lexlean/production/}"
+            mkdir -p "$(dirname "$dest")"
+            cp "$lib" "$dest"
+            cp "$(dirname "$(dirname "$lib")")/Cargo.toml" "$(dirname "$(dirname "$dest")")/" 2>/dev/null || true
+          done
+          find export -type f | sort
+      - name: Keep the packages
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: model-export-${{ github.sha }}
+          path: export
+          if-no-files-found: warn

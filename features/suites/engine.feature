@@ -162,3 +162,9 @@ Feature: engine
     Given a planted crate whose enum sets discriminants 5 and 9 and leaves the next unset, a function transmuting a byte matched by 5 or 9..=10 into it, another transmuting a byte matched by 5..=6, and a cast of the enum to a byte
     When the suite exercises UE-27
     Then the first transmuting function and the cast lift, the cast giving each variant its discriminant, and the second transmuting function is a residue row naming the unsafe block
+
+  @UE-28 @build
+  Scenario: Account metas and branch hints lift by their models
+    Given a planted crate depending on solana-instruction, solana-pubkey and pinocchio, with a function pushing AccountMeta::new and AccountMeta::new_readonly onto a vector and another testing likely and unlikely
+    When the suite exercises UE-28
+    Then both functions lift, the metas writable and read-only as their constructors set them
